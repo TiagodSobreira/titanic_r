@@ -1,0 +1,54 @@
+setwd("~/Nova pasta (2) - Copia")
+
+Titanic.train <- read.csv(file = "train.csv",stringsAsFactors = FALSE, header = TRUE)
+Titanic.test <- read.csv(file = "test.csv",stringsAsFactors = FALSE,header = TRUE)
+
+median(Titanic.train$Age, na.rm = TRUE)
+median(Titanic.test$Age, na.rm = TRUE)
+
+Titanic.train$IsTrainSet <- TRUE
+Titanic.test$IsTrainSet <- FALSE
+
+Titanic.test$Survived <- NA
+
+Titanic.full <- rbind(Titanic.train,Titanic.test)
+
+Titanic.full[Titanic.full$Embarked=='',"Embarked"] <- 'S'
+
+is.na(Titanic.full$Age)
+table(is.na(Titanic.full$Age))
+
+age.median <- median(Titanic.full$Age, na.rm = TRUE)
+Titanic.full[is.na(Titanic.full$Age), "Age"] <- age.median
+
+#limpar valores faltando em taxa
+fare.median <- median(Titanic.full$Fare, na.rm = TRUE)
+Titanic.full[is.na(Titanic.full$Fare), "Fare"] <- fare.median
+
+# categorical casting
+Titanic.full$Pclass <- as.factor(Titanic.full$Pclass)
+Titanic.full$Sex <- as.factor(Titanic.full$Sex)
+Titanic.full$Embarked <- as.factor(Titanic.full$Embarked)
+
+#dividir os dados novamente entre train e test
+Titanic.train <- Titanic.full[Titanic.full$IsTrainSet==TRUE,]
+Titanic.test <- Titanic.full[Titanic.full$IsTrainSet==FALSE,]
+
+Titanic.train$Survived <- as.factor(Titanic.train$Survived)
+
+survived.equation <- "Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked"
+survived.formula <- as.formula(survived.equation)
+
+install.packages("randomForest")
+library(randomForest)
+
+titanic.model <- randomForest(formula = survived.formula, data = Titanic.train, ntree = 500, mtry = 3, nodesize = 0.01*nrow(Titanic.test))
+
+features.equation <- "Pclass + Sex + Age + SibSp + Parch + Fare + Embarked"
+Survived <- predict(titanic.model, newdata = Titanic.test)
+
+PassengerId <- Titanic.test$PassengerId
+output.df <- as.data.frame(PassengerId)
+output.df$Survived <- Survived
+
+write.csv(output.df,file = "kaggle__submission.csv", row.names = FALSE)
